@@ -18,7 +18,8 @@ EXPT_NAME = "default"
 BATCH_SIZE = 1
 EPOCHS = 10
 LEARNING_RATE = 0.0001
-HIDDEN_REPR_DIM = 200
+HIDDEN_REPR_DIM = 50
+MODEL_PERSIST_PATH = f'./{EXPT_NAME}_model.weights'
 
 
 class BinaryClassifier(nn.Module):
@@ -45,6 +46,9 @@ class BinaryClassifier(nn.Module):
 
         output = embedded_sequence
         output, hidden = self.gru(output, hidden)
+
+        self.representation = hidden
+
         fc_out = self.fc(hidden)
         sm_out = self.sm(fc_out)
 
@@ -90,7 +94,7 @@ if __name__ == "__main__":
             agg_test_loss = 0
             for eval_X, eval_y in eval_loader:
                 eval_X = list(reduce(lambda x, y: x + y, X))
-                eval_y = torch.Tensor([0., 1.]) if y == 1 else torch.Tensor([1., 0.])
+                eval_y = torch.Tensor([0., 1.]) if eval_y == 1 else torch.Tensor([1., 0.])
                 eval_y = eval_y.view(1, 1, -1).float()
                 pred_y = classifier.forward(input=X, hidden=inital_hidden)
 
@@ -102,6 +106,8 @@ if __name__ == "__main__":
             writer.add_scalars("LSTM_Classifier/loss", {
                 "test": agg_test_loss,
                 "train": train_loss.item()
-            })
+            }, e)
+
+            torch.save(classifier.state_dict(), MODEL_PERSIST_PATH)
 
             classifier.train()
