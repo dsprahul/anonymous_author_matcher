@@ -1,5 +1,6 @@
 import json
 import torch
+import fasttext
 import torchtext
 import random
 import numpy as np
@@ -18,10 +19,11 @@ class RedditComments(torch.utils.data.Dataset):
         with open(path_to_json) as in_:
             train_df, dev_df, test_df = json.load(in_)
 
-        self.SEP = "<SEP>"
         self.tokenizer = get_tokenizer("spacy")
+        self.embedding = fasttext.load_model("wiki.simple/wiki.simple.bin")
         self.p2n_ratio = 0.5
         self.num_samples = num_samples
+        self.SEP = self.embedding.get_word_vector("<SEP>")
 
         if train is True:
             df = train_df
@@ -52,7 +54,17 @@ class RedditComments(torch.utils.data.Dataset):
                 self.tokenizer(comment)
                 for comment in comments
             ]
-            tokenized_df[auth] = tokenized_comments
+
+            tokenized_comment_embeddings = []
+            for comment in tokenized_comments:
+
+                comment_embeddings = [
+                    self.embedding.get_word_vector(token)
+                    for token in comment
+                ]
+                tokenized_comment_embeddings.append(comment_embeddings)
+
+            tokenized_df[auth] = tokenized_comment_embeddings
 
         return tokenized_df
 
@@ -91,4 +103,4 @@ class RedditComments(torch.utils.data.Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        return self.X[idx], self.y[idx]
+        return torch.Tensor(self.X[idx]), self.y[idx]

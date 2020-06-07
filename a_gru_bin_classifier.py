@@ -1,4 +1,3 @@
-import fasttext
 import torch
 import torch.nn as nn
 import numpy as np
@@ -25,27 +24,22 @@ MODEL_PERSIST_PATH = f'./{EXPT_NAME}_model.weights'
 class BinaryClassifier(nn.Module):
     def __init__(self, hidden_size, embedding_size=300):
         super(BinaryClassifier, self).__init__()
+
         self.hidden_size = hidden_size
         self.embedding_size = embedding_size
-
-        self.embedding = fasttext.load_model("wiki.simple/wiki.simple.bin")
         self.gru = nn.GRU(embedding_size, hidden_size)
         self.fc = nn.Linear(hidden_size, 2)
         self.sm = nn.Softmax(dim=0)
 
     def forward(self, input, hidden):
-        sequence_len = len(input)
-        embedded_sequence = []
-        for token in input:
-            token_embedding = self.embedding.get_word_vector(token)
-            embedded_sequence.append(torch.Tensor(token_embedding).float())
 
-        embedded_sequence = torch.cat(embedded_sequence, 0)
+        sequence_len = input.size()[1]
+
         # GRU expects (seq_len, batch_size, input_size)
-        embedded_sequence = embedded_sequence.view(sequence_len, -1, self.embedding_size)
+        input = input.view(sequence_len, -1, self.embedding_size)
 
-        output = embedded_sequence
-        output, hidden = self.gru(output, hidden)
+        # output = embedded_sequence
+        output, hidden = self.gru(input, hidden)
 
         self.representation = hidden
 
@@ -64,7 +58,8 @@ if __name__ == "__main__":
     classifier = BinaryClassifier(
         hidden_size=HIDDEN_REPR_DIM,
         embedding_size=300
-    )
+    ).to(device)
+
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=LEARNING_RATE)
     inital_hidden = classifier.initHidden()
@@ -77,11 +72,13 @@ if __name__ == "__main__":
     eval_loader = torch.utils.data.DataLoader(eval, batch_size=BATCH_SIZE)
 
     for e in range(1, EPOCHS + 1):
-        for X, y in train_loader:
-            X = list(reduce(lambda x, y: x + y, X))
+        print(f'\nTraining Epoch#{e}')
+
+        for X, y in tqdm(train_loader):
+
             y = torch.Tensor([0., 1.]) if y == 1 else torch.Tensor([1., 0.])
-            y = y.view(1, 1, -1).float()
-            y_hat = classifier.forward(input=X, hidden=inital_hidden)
+            y = y.view(1, 1, -1).float().to(device)
+            y_hat = classifier.forward(input=X.to(device), hidden=inital_hidden)
 
             optimizer.zero_grad()
             train_loss = criterion(y_hat, y)
@@ -93,10 +90,13 @@ if __name__ == "__main__":
 
             agg_test_loss = 0
             for eval_X, eval_y in eval_loader:
-                eval_X = list(reduce(lambda x, y: x + y, X))
+
                 eval_y = torch.Tensor([0., 1.]) if eval_y == 1 else torch.Tensor([1., 0.])
                 eval_y = eval_y.view(1, 1, -1).float()
-                pred_y = classifier.forward(input=X, hidden=inital_hidden)
+                pred_y = classifier.forward(
+                    input=eval_X.to(device),
+                    hidden=inital_hidden
+                )
 
                 test_loss = criterion(pred_y, eval_y)
                 agg_test_loss += test_loss.item()

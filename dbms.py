@@ -54,10 +54,17 @@ def determine_author(text):
 
 if __name__ == "__main__":
     data_point = {
-        "username": "<Name>",
+        "username": "bobdeb12",
         "source": "facebook",
         "body": "blah blah blah.."
     }
+    data_point2 = {
+        "username": "debbob12",
+        "source": "quora",
+        "body": "blah blah blah.."  # Similar writing style as <bobdeb12>
+    }
+
+    # Do magic here
     data_point["author"] = determine_author(data_point["body"])
 
     db.collection.insert(
