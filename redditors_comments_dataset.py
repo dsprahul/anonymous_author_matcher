@@ -13,7 +13,8 @@ class RedditComments(torch.utils.data.Dataset):
     def __init__(self,
                  path_to_json,
                  num_samples=10000,
-                 p2nr=0.5
+                 p2nr=0.5,
+                 mixing_strategy="random"
                  ):
 
         with open(path_to_json) as in_:
@@ -32,7 +33,10 @@ class RedditComments(torch.utils.data.Dataset):
             df[author] = train_df[author] + dev_df[author]
 
         tokenized_df = self._preprocess(df)
-        positives, negatives = self._example_mixer(tokenized_df)
+        positives, negatives = self._example_mixer(
+            df=tokenized_df,
+            mixing_strategy=mixing_strategy
+        )
 
         X = np.array(positives + negatives)
         y = np.array([1] * len(positives) + [0] * len(negatives))
@@ -66,7 +70,7 @@ class RedditComments(torch.utils.data.Dataset):
 
         return tokenized_df
 
-    def _example_mixer(self, df):
+    def _example_mixer(self, df, mixing_strategy):
 
         authors = list(df.keys())
 
@@ -76,11 +80,16 @@ class RedditComments(torch.utils.data.Dataset):
         negatives_count = self.num_samples - positives_count
 
         for i in range(positives_count):
-            i = i % len(authors)
-            author = authors[i]
+            ai = i % len(authors)
+            author = authors[ai]
             author_comments = df[author]
+            ci = i % len(author_comments) - 1
 
-            first, second = random.sample(author_comments, 2)
+            if mixing_strategy == "random":  # Mixes randomly
+                first, second = random.sample(author_comments, 2)
+            else:
+                first, second = author_comments[ci], author_comments[ci + 1]
+
             positives.append(first + [self.SEP] + second)
 
         for i in range(negatives_count):

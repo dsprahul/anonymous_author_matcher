@@ -19,8 +19,9 @@ args = parser.parse_args()
 
 EXPT_NAME = args.name or "default"
 DATASET_PATH = "./data/anon_auth_dataset_simplified.json"
-DATASET_SIZE = 10
+DATASET_SIZE = 1000
 POS_TO_NEG_RATIO = 0.50
+MIXING_STRATEGY = "ordered"  # "random"
 BATCH_SIZE = 1
 EPOCHS = 30
 LEARNING_RATE = 0.001
@@ -68,7 +69,8 @@ if __name__ == "__main__":
     dataset = RedditComments(
         path_to_json=DATASET_PATH,
         num_samples=DATASET_SIZE,
-        p2nr=POS_TO_NEG_RATIO
+        p2nr=POS_TO_NEG_RATIO,
+        mixing_strategy=MIXING_STRATEGY
     )
 
     train_eval_splits = (int(DATASET_SIZE * 0.8), int(DATASET_SIZE * 0.2))
