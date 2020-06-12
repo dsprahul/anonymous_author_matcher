@@ -18,13 +18,14 @@ parser.add_argument("-n", "--name")
 args = parser.parse_args()
 
 EXPT_NAME = args.name or "default"
+DATASET_SIZE = 20
 BATCH_SIZE = 1
-EPOCHS = 10
-LEARNING_RATE = 0.0001
-HIDDEN_REPR_DIM = 50
+EPOCHS = 100
+LEARNING_RATE = 0.001
+HIDDEN_REPR_DIM = 300
 MODEL_PERSIST_PATH = f'./{EXPT_NAME}_model.weights'
 
-print(f'Running {EXPT_NAME}...')
+print(f'Running {EXPT_NAME} on {device}...')
 
 
 class BinaryClassifier(nn.Module):
@@ -60,7 +61,19 @@ class BinaryClassifier(nn.Module):
 
 if __name__ == "__main__":
     writer = SummaryWriter(log_dir=f'./log/{EXPT_NAME}')
-    torch.autograd.set_detect_anomaly(True)
+
+    dataset = RedditComments(
+        path_to_json="./data/anon_auth_dataset.json",
+        num_samples=DATASET_SIZE,
+        p2nr=0.5
+    )
+
+    train_eval_splits = (int(DATASET_SIZE * 0.8), int(DATASET_SIZE * 0.2))
+    train, eval = torch.utils.data.random_split(dataset, train_eval_splits)
+
+    train_loader = torch.utils.data.DataLoader(train, batch_size=BATCH_SIZE)
+    eval_loader = torch.utils.data.DataLoader(eval, batch_size=BATCH_SIZE)
+
     classifier = BinaryClassifier(
         hidden_size=HIDDEN_REPR_DIM,
         embedding_size=300
@@ -70,12 +83,6 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(classifier.parameters(), lr=LEARNING_RATE)
     hidden = classifier.initHidden()  # Initialize hidden state
     classifier.train()
-
-    train = RedditComments(path_to_json="./data/anon_auth_dataset.json")
-    train_loader = torch.utils.data.DataLoader(train, batch_size=BATCH_SIZE)
-
-    eval = RedditComments(path_to_json="./data/anon_auth_dataset.json", train=False)
-    eval_loader = torch.utils.data.DataLoader(eval, batch_size=BATCH_SIZE)
 
     for e in range(1, EPOCHS + 1):
         print(f'\nTraining Epoch#{e}')

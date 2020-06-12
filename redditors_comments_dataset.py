@@ -12,8 +12,8 @@ class RedditComments(torch.utils.data.Dataset):
 
     def __init__(self,
                  path_to_json,
-                 train=True,
-                 num_samples=10000
+                 num_samples=10000,
+                 p2nr=0.5
                  ):
 
         with open(path_to_json) as in_:
@@ -21,17 +21,14 @@ class RedditComments(torch.utils.data.Dataset):
 
         self.tokenizer = get_tokenizer("spacy")
         self.embedding = fasttext.load_model("wiki.simple/wiki.simple.bin")
-        self.p2n_ratio = 0.5
+        self.p2n_ratio = p2nr
         self.num_samples = num_samples
         self.SEP = self.embedding.get_word_vector("<SEP>")
 
-        if train is True:
-            df = train_df
-            self.num_samples *= 0.6
-        else:
-            df = test_df
-            self.num_samples *= 0.2
-        self.num_samples = int(self.num_samples)
+        df = {}
+        # merge train and dev into one & do this split using torch built-in
+        for author in dev_df:
+            df[author] = train_df[author] + dev_df[author]
 
         tokenized_df = self._preprocess(df)
         positives, negatives = self._example_mixer(tokenized_df)
