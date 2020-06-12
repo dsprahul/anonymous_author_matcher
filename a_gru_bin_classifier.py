@@ -18,11 +18,13 @@ parser.add_argument("-n", "--name")
 args = parser.parse_args()
 
 EXPT_NAME = args.name or "default"
-DATASET_SIZE = 20
+DATASET_PATH = "./data/anon_auth_dataset_simplified.json"
+DATASET_SIZE = 10
+POS_TO_NEG_RATIO = 0.50
 BATCH_SIZE = 1
-EPOCHS = 100
+EPOCHS = 30
 LEARNING_RATE = 0.001
-HIDDEN_REPR_DIM = 300
+HIDDEN_REPR_DIM = 100
 MODEL_PERSIST_PATH = f'./{EXPT_NAME}_model.weights'
 
 print(f'Running {EXPT_NAME} on {device}...')
@@ -36,7 +38,8 @@ class BinaryClassifier(nn.Module):
         self.embedding_size = embedding_size
         self.gru = nn.GRU(embedding_size, hidden_size)
         self.fc = nn.Linear(hidden_size, 2)
-        self.sm = nn.Softmax(dim=2)
+        # self.sm = nn.Softmax(dim=2)
+        self.sm = nn.Sigmoid()
 
     def forward(self, input, hidden):
 
@@ -63,9 +66,9 @@ if __name__ == "__main__":
     writer = SummaryWriter(log_dir=f'./log/{EXPT_NAME}')
 
     dataset = RedditComments(
-        path_to_json="./data/anon_auth_dataset.json",
+        path_to_json=DATASET_PATH,
         num_samples=DATASET_SIZE,
-        p2nr=0.5
+        p2nr=POS_TO_NEG_RATIO
     )
 
     train_eval_splits = (int(DATASET_SIZE * 0.8), int(DATASET_SIZE * 0.2))
@@ -79,7 +82,7 @@ if __name__ == "__main__":
         embedding_size=300
     ).to(device)
 
-    criterion = nn.MSELoss()
+    criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=LEARNING_RATE)
     hidden = classifier.initHidden()  # Initialize hidden state
     classifier.train()
@@ -90,14 +93,13 @@ if __name__ == "__main__":
 
         for X, y in tqdm(train_loader):
 
-            y = torch.Tensor([0., 1.]) if y == 1 else torch.Tensor([1., 0.])
-            y = y.view(1, 1, -1).float().to(device)
             y_hat, hidden = classifier.forward(
                 input=X.to(device),
                 hidden=torch.Tensor(hidden).to(device)
             )
+            y = torch.Tensor([1, 0]) if y == 1 else torch.Tensor([0, 1])
             optimizer.zero_grad()
-            train_loss = criterion(y_hat, y)
+            train_loss = criterion(y_hat.squeeze(dim=0), y.to(device))
             train_accu += (torch.argmax(y_hat) == torch.argmax(y)).item()
             train_loss.backward()
             optimizer.step()
@@ -108,14 +110,12 @@ if __name__ == "__main__":
             agg_test_loss = 0
             for eval_X, eval_y in eval_loader:
 
-                eval_y = torch.Tensor([0., 1.]) if eval_y == 1 else torch.Tensor([1., 0.])
-                eval_y = eval_y.view(1, 1, -1).float().to(device)
                 pred_y, _ = classifier.forward(
                     input=eval_X.to(device),
                     hidden=torch.Tensor(hidden).to(device)
                 )
-
-                test_loss = criterion(pred_y, eval_y)
+                eval_y = torch.Tensor([1, 0]) if eval_y == 1 else torch.Tensor([0, 1])
+                test_loss = criterion(pred_y.squeeze(dim=0), eval_y.to(device))
                 agg_test_loss += test_loss.item()
                 test_accu += (torch.argmax(pred_y) == torch.argmax(eval_y)).item()
 

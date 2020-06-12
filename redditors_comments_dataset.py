@@ -18,6 +18,7 @@ class RedditComments(torch.utils.data.Dataset):
 
         with open(path_to_json) as in_:
             train_df, dev_df, test_df = json.load(in_)
+            print(f'Training on {len(train_df)} authors...')
 
         self.tokenizer = get_tokenizer("spacy")
         self.embedding = fasttext.load_model("wiki.simple/wiki.simple.bin")
