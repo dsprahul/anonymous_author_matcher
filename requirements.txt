@@ -125,7 +125,7 @@ pyparsing==2.3.0
 pyrsistent==0.15.7
 pytesseract==0.3.2
 python-dateutil==2.7.5
-python-engineio==3.8.1
+python-engineio==3.8.2.post1
 python-slugify==4.0.0
 python-socketio==4.1.0
 pytimer==0.0.0
