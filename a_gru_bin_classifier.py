@@ -18,26 +18,28 @@ parser.add_argument("-n", "--name")
 args = parser.parse_args()
 
 EXPT_NAME = args.name or "default"
-DATASET_PATH = "./data/anon_auth_dataset_simplified.json"
-DATASET_SIZE = 1000
+DATASET_PATH = "./data/anon_auth_dataset.json"
+DATASET_SIZE = 2000
 POS_TO_NEG_RATIO = 0.50
 MIXING_STRATEGY = "ordered"  # "random"
 BATCH_SIZE = 1
-EPOCHS = 30
+EPOCHS = 20
 LEARNING_RATE = 0.001
-HIDDEN_REPR_DIM = 100
-MODEL_PERSIST_PATH = f'./{EXPT_NAME}_model.weights'
+HIDDEN_REPR_DIM = 150
+NUM_HIDDEN_LAYERS = 1
+MODEL_PERSIST_PATH = f'./models/{EXPT_NAME}_model.weights'
 
-print(f'Running {EXPT_NAME} on {device}...')
+print(f'Running {EXPT_NAME} on {device}', end=", ")
 
 
 class BinaryClassifier(nn.Module):
-    def __init__(self, hidden_size, embedding_size=300):
+    def __init__(self, hidden_size, num_hidden=1, embedding_size=300):
         super(BinaryClassifier, self).__init__()
 
         self.hidden_size = hidden_size
+        self.num_hidden_layers = num_hidden
         self.embedding_size = embedding_size
-        self.gru = nn.GRU(embedding_size, hidden_size)
+        self.gru = nn.GRU(embedding_size, hidden_size, num_hidden)
         self.fc = nn.Linear(hidden_size, 2)
         # self.sm = nn.Softmax(dim=2)
         self.sm = nn.Sigmoid()
@@ -48,19 +50,14 @@ class BinaryClassifier(nn.Module):
 
         # GRU expects (seq_len, batch_size, input_size)
         input = input.view(sequence_len, -1, self.embedding_size)
-
-        # output = embedded_sequence
         output, hidden = self.gru(input, hidden)
-
-        # self.representation = hidden
-
         fc_out = self.fc(hidden)
         sm_out = self.sm(fc_out)
 
         return sm_out, hidden.data.cpu().numpy()
 
     def initHidden(self):
-        return np.zeros((1, 1, self.hidden_size))
+        return np.zeros((self.num_hidden_layers, 1, self.hidden_size))
 
 
 if __name__ == "__main__":
@@ -81,20 +78,27 @@ if __name__ == "__main__":
 
     classifier = BinaryClassifier(
         hidden_size=HIDDEN_REPR_DIM,
-        embedding_size=300
+        embedding_size=300,
+        num_hidden=NUM_HIDDEN_LAYERS
     ).to(device)
 
     criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(classifier.parameters(), lr=LEARNING_RATE)
     hidden = classifier.initHidden()  # Initialize hidden state
     classifier.train()
+    num_classifier_params = sum(
+        p.numel() for p in classifier.parameters()
+        if p.requires_grad
+    )
+
+    print(f'dataset size: {len(train)}/{len(eval)}', end=", ")
+    print(f'#trainable_params: {num_classifier_params}')
 
     for e in range(1, EPOCHS + 1):
         print(f'\nTraining Epoch#{e}')
         train_accu, test_accu = 0, 0
 
         for X, y in tqdm(train_loader):
-
             y_hat, hidden = classifier.forward(
                 input=X.to(device),
                 hidden=torch.Tensor(hidden).to(device)
