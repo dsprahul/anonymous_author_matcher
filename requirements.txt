@@ -26,7 +26,7 @@ colorama==0.4.3
 colorlog==4.0.2
 contextlib2==0.6.0.post1
 crc32c==2.0
-cryptography==2.8
+cryptography==3.2
 cycler==0.10.0
 Cython==0.29.14
 decorator==4.3.0
