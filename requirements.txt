@@ -1,5 +1,5 @@
 absl-py==0.8.1
-aiohttp==3.6.2
+aiohttp==3.7.4
 aioice==0.6.16
 aiortc==0.9.22
 appnope==0.1.0
