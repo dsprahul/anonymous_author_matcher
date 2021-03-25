@@ -131,7 +131,7 @@ python-socketio==4.1.0
 pytimer==0.0.0
 pytorch-pretrained-bert==0.3.0
 pytz==2019.1
-PyYAML==5.2
+PyYAML==5.4
 pyzmq==18.1.1
 qtconsole==4.6.0
 ray==0.8.4
