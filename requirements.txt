@@ -93,7 +93,7 @@ notebook==6.0.3
 numpy==1.17.3
 oauthlib==3.1.0
 opencv-contrib-python==4.1.2.30
-opencv-python==4.1.2.30
+opencv-python==4.2.0.32
 opt-einsum==3.1.0
 pandas==0.25.0
 pandas-datareader==0.7.0
